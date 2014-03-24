@@ -14,6 +14,7 @@ from scipy import stats
 import operator
 import math
 import turtle
+import subprocess
 
 
 
@@ -33,9 +34,11 @@ class shapeMorphology():
         self.screen_x=300
         self.screen_y=300
         self.screen=turtle.Screen()
+        self.angleRadiusArray=[]
+        self.saveFileName=""
+        self.t =turtle.Turtle()
 
-
-    def confidence_interval(self, data, alpha=0.05):
+    def confidence_interval(self, data, alpha=0.10):
         a = 1.0 * np.array(data)
         n = len(a)
         m, se = np.mean(a), scipy.stats.sem(a)
@@ -87,6 +90,7 @@ class shapeMorphology():
                 #print "Now on item: ", self.itemCount
             rowcount += 1
         file.close()
+        self.saveFileName=self.filename[0:-4]+"-out.eps"
 
 
     def addOptions(self, oldargs):
@@ -99,20 +103,28 @@ class shapeMorphology():
         self.addOptions(args)
         self.checkMinimumRequirements()
         self.openFile(self.args['inputfile'])
+
         for item in self.xyArray:
             centroid = self.calculateCentroid(item)
-            self.radiiArray.append(self.radiiCalc(centroid,item))
+            radius = self.radiiCalc(centroid,item)
+            circleArray = self.angleRadiiCalc(centroid,item)
+            #print "circleArray: ", circleArray
+            #print "length of circleArray: ", len(circleArray)
+            self.angleRadiusArray.append(circleArray)
 
-        for num in range(0,self.numberOfPoints):
-            angleArray=[]
-            for radii in self.radiiArray:
-                angleArray.append(radii[num])
-            mean,low,high = self.confidence_interval(angleArray)
+        for angle in range(0,360):
+            distanceArray = []
+            #print "angleRadiusArray: ", self.angleRadiusArray
+            for a in self.angleRadiusArray:
+                #print "length of a: ", len(a), "-", angle
+                distanceArray.append(a[angle])
+            mean,low,high = self.confidence_interval(distanceArray)
             self.meanArray.append(mean)
             self.lowArray.append(low)
             self.highArray.append(high)
 
         self.drawing()
+        self.saveFigure()
         print('Hit any key to exit')
         dummy = input()
 
@@ -124,45 +136,95 @@ class shapeMorphology():
         self.drawOutline(self.highArray,"high")
 
     def drawOutline(self,pointArray,kind):
-        t =turtle.Turtle()
 
+        self.t.ht()
         ## go through points one by one based on distance
-
-        angleIncrement=360.0/float(self.numberOfPoints)
-        currentAngle=-1.0*angleIncrement
-        t.setx(0)
-        t.sety(0)
+        #print "length of point array: ", len(pointArray)
+        #angleIncrement=360.0/float(self.numberOfPoints)
+        currentAngle=-1.0
+        self.t.penup()
+        self.t.setx(0)
+        self.t.sety(0)
+        scale=1000
         m=0
+        offset=0
         if kind == "mean":
-            t.pen(fillcolor="white", pencolor="black", pensize=1)
+            self.t.pen(fillcolor="white", pencolor="black", pensize=1)
+            offset=5
         elif kind == "low":
-            t.pen(fillcolor="white", pencolor="red", pensize=1)
+            self.t.pen(fillcolor="white", pencolor="red", pensize=1)
+            offset=4.5
         else:
-            t.pen(fillcolor="white", pencolor="blue", pensize=1
-            )
+            self.t.pen(fillcolor="white", pencolor="blue", pensize=1)
+            offset=5.5
         for radius in pointArray:
-            currentAngle += angleIncrement
-            x = radius*100 * math.sin(currentAngle)
-            y = radius*100 * math.cos(currentAngle)
+            currentAngle += 1
+            x = radius*math.sin(math.radians(currentAngle))*offset*scale
+            y = radius* math.cos(math.radians(currentAngle))*offset*scale
             if m==0:
+                self.t.penup()
                 m=1
+                x1=x
+                y1=y
             else:
-                t.pendown()
-            t.goto(x,y)
+                self.t.pendown()
+            self.t.goto(x,y)
+        self.t.goto(x1,y1)
 
+
+    def angleRadiiCalc(self,centroid,arrayOfPoints):
+        #print "array of points:", arrayOfPoints
+        angleHash={}
+        circleArray = []
+        x=arrayOfPoints[0]
+        y=arrayOfPoints[1]
+        for p in range(0,len(x)-1):
+            dist = self.calc_dist(centroid[0],centroid[1],x[p],y[p])
+            angle= self.calc_angle(centroid[0],centroid[1],x[p],y[p])
+            angleHash[ angle ] = dist
+
+        circleArray = self.circularization(angleHash)
+        # returns 0-359 at each 1 degree interval
+        return circleArray
+
+    def circularization(self, angleHash):
+        circleArray=[]
+        for a in range(0,360):
+            closest_value= self.get_closest_distance(angleHash,a)
+            circleArray.append(closest_value)
+        return circleArray
 
     def radiiCalc(self,centroid,arrayOfPoints):
+        #print "array of points:", arrayOfPoints
         distArray=[]
-        for xy in arrayOfPoints:
-            dist = self.calc_dist(centroid[0],centroid[1],xy[0],xy[1])
+        x=arrayOfPoints[0]
+        y=arrayOfPoints[1]
+        for p in range(0,len(x)-1):
+            dist = self.calc_dist(centroid[0],centroid[1],x[p],y[p])
             distArray.append(dist)
         return distArray
 
+    def calc_angle(self,x0,y0,x1,y1):
+        dx = x0 - x1
+        dy = y0 - y1
+        rads = math.atan2(-dy,dx)
+        rads %= 2*math.pi
+        degs = math.degrees(rads)
+        return degs
 
+    def get_closest_distance(self,angleHash, angle):
+        closestValue= angleHash.get(angle, angleHash[min(angleHash.keys(), key=lambda k: abs(k-angle))])
+        return closestValue
 
     def checkMinimumRequirements(self):
         if self.args['inputfile'] in (None, ""):
             sys.exit("Inputfile is a required input value: --inputfile=../testdata/testdata.txt")
+
+    def saveFigure(self):
+        ts = self.t.getscreen()
+        ts.getcanvas().postscript(file=self.saveFileName)
+        command="ps2pdf "+ self.saveFileName+" "+ self.saveFileName[:-4]+".pdf"
+        process = subprocess.Popen(command, shell=True)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='shape analysis')
