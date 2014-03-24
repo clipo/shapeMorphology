@@ -49,7 +49,7 @@ class shapeMorphology():
     def dist(self,x,y):
         return np.sqrt(np.sum((x-y)**2))
 
-    def calc_dist(x0,y0,x1,y1):
+    def calc_dist(self,x0,y0,x1,y1):
         return math.sqrt((x0-x1) ** 2 +
                      (y0-y1) ** 2 )
 
@@ -64,15 +64,28 @@ class shapeMorphology():
         for row in reader:
             if rowcount>0:  # skip first row
                 xyPoints=[]
-                row = map(str,row)
-                xValues=row[1::2]
-                yValues=row[2::2]
+                txValues=[]
+                xValues=[]
+                tyValues=[]
+                yValues=[]
+                rowValues = map(str,row)
+                rowValues.pop(0)
+                txValues=rowValues[1::2]
+                tyValues=rowValues[2::2]
+                for m in txValues:
+                    xValues.append(float(m))
+                for n in tyValues:
+                    if n not in ("",None):
+                        #print "valu: ", n
+                        yValues.append(float(n))
                 xyPoints.append(xValues)
                 xyPoints.append(yValues)
-                xyArray.append(xyPoints)
+                self.xyArray.append(xyPoints)
                 self.numberOfPoints=len(xValues)
-                self.centroidArray.append(self.calculateCentroid(xyArray))
+                self.centroidArray.append(self.calculateCentroid(xyPoints))
                 self.itemCount += 1
+                #print "Now on item: ", self.itemCount
+            rowcount += 1
         file.close()
 
 
@@ -99,6 +112,9 @@ class shapeMorphology():
             self.lowArray.append(low)
             self.highArray.append(high)
 
+        self.drawing()
+        print('Hit any key to exit')
+        dummy = input()
 
     def drawing(self):
         self.screen.title(self.filename)
@@ -126,8 +142,8 @@ class shapeMorphology():
             )
         for radius in pointArray:
             currentAngle += angleIncrement
-            x = radius * math.sin(currentAngle)
-            y = radius * math.cos(currentAngle)
+            x = radius*100 * math.sin(currentAngle)
+            y = radius*100 * math.cos(currentAngle)
             if m==0:
                 m=1
             else:
@@ -186,4 +202,4 @@ shapeMorphology.conductAnalysis(args)
 
 
 
-'''''__author__ = 'clipo'
+'''''
