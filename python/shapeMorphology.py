@@ -3,19 +3,14 @@ __author__ = 'clipo'
 import sys
 import csv
 import argparse
-import numpy as np
-import scipy as scipy
-import scipy.stats
-import random as rnd
-import scikits.bootstrap as bootstrap
-import numpy as np
-from matplotlib import pyplot as plt
-from scipy import stats
-import operator
 import math
 import turtle
 import subprocess
 
+import scipy as scipy
+import scipy.stats
+import numpy as np
+from scipy import stats
 
 
 class shapeMorphology():
@@ -37,13 +32,20 @@ class shapeMorphology():
         self.angleRadiusArray=[]
         self.saveFileName=""
         self.t =turtle.Turtle()
+        self.minArray=[]
+        self.maxArray=[]
+        self.scale=0
+        self.lengthArray=[]
 
     def confidence_interval(self, data, alpha=0.10):
         a = 1.0 * np.array(data)
         n = len(a)
         m, se = np.mean(a), scipy.stats.sem(a)
         h = se * scipy.stats.t._ppf((1 + alpha) / 2., n - 1)
-        return m, m - h, m + h
+
+        minimum=min(data)
+        maximum=max(data)
+        return m, m - h, m + h,minimum,maximum
 
     def calculateCentroid(self,xyArray):
         centroid = (sum(xyArray[0])/len(xyArray[0]),sum(xyArray[1])/len(xyArray[1]))
@@ -86,12 +88,36 @@ class shapeMorphology():
                 self.xyArray.append(xyPoints)
                 self.numberOfPoints=len(xValues)
                 self.centroidArray.append(self.calculateCentroid(xyPoints))
+
+                count =0
+                length=0
+                #print "# of points: ", len(xValues)
+                for m in range(0,len(xValues)-1):
+                    if count==0:
+                        startX=float(xValues[0])
+                        startY=float(yValues[0])
+                    else:
+                        #print "from x: ", startX , "y: ", startY, " to x: ",  xValues[m], " Y: ", yValues[m]
+                        length += self.calc_dist(startX,startY, xValues[m],yValues[m])
+                        startX=float(xValues[m])
+                        startY=float(yValues[m])
+                    count += 1
+                self.lengthArray.append(length)
+                #print "Total Length: ", length
+
                 self.itemCount += 1
                 #print "Now on item: ", self.itemCount
             rowcount += 1
+        maxLength = max(self.lengthArray)
+        self.scale = 600/maxLength
+        if maxLength<1 and float(args['fixedCentroidX'])>100:
+            print "Check the location of the centroid - the scale appears to be off given that the maximum length of the outline is: ", maxLength
+            #self.scale = 100
+            #args['fixedCentroidX']=0
+            #args['fixedCentroidY']=0
+        #print "scale: ", self.scale
         file.close()
         self.saveFileName=self.filename[0:-4]+"-out.eps"
-
 
     def addOptions(self, oldargs):
         self.args = {'debug': None, 'alpha': None,
@@ -105,7 +131,10 @@ class shapeMorphology():
         self.openFile(self.args['inputfile'])
 
         for item in self.xyArray:
-            centroid = self.calculateCentroid(item)
+            if args['fixedCentroidX'] not in ("None", None, 0, "0", False, "False"):
+                centroid = [float(args['fixedCentroidX']),float(args['fixedCentroidY'])]
+            else:
+                centroid = self.calculateCentroid(item)
             radius = self.radiiCalc(centroid,item)
             circleArray = self.angleRadiiCalc(centroid,item)
             #print "circleArray: ", circleArray
@@ -118,10 +147,12 @@ class shapeMorphology():
             for a in self.angleRadiusArray:
                 #print "length of a: ", len(a), "-", angle
                 distanceArray.append(a[angle])
-            mean,low,high = self.confidence_interval(distanceArray)
+            mean,low,high,min,max = self.confidence_interval(distanceArray)
             self.meanArray.append(mean)
             self.lowArray.append(low)
             self.highArray.append(high)
+            self.minArray.append(min)
+            self.maxArray.append(max)
 
         self.drawing()
         self.saveFigure()
@@ -134,6 +165,9 @@ class shapeMorphology():
         self.drawOutline(self.meanArray,"mean")
         self.drawOutline(self.lowArray,"low")
         self.drawOutline(self.highArray,"high")
+        self.drawOutline(self.minArray,"min")
+        self.drawOutline(self.maxArray,"max")
+        self.addGraph()
 
     def drawOutline(self,pointArray,kind):
 
@@ -145,22 +179,30 @@ class shapeMorphology():
         self.t.penup()
         self.t.setx(0)
         self.t.sety(0)
-        scale=1000
+
         m=0
         offset=0
         if kind == "mean":
             self.t.pen(fillcolor="white", pencolor="black", pensize=1)
-            offset=5
+            offset=3
         elif kind == "low":
             self.t.pen(fillcolor="white", pencolor="red", pensize=1)
-            offset=4.5
-        else:
+            offset=2.75
+        elif kind=="high":
             self.t.pen(fillcolor="white", pencolor="blue", pensize=1)
-            offset=5.5
+            offset=3.25
+        elif kind=="min":
+            self.t.pen(fillcolor="white", pencolor="gray", pensize=1)
+            offset=3
+        elif kind=="max":
+            self.t.pen(fillcolor="white", pencolor="gray", pensize=1)
+            offset=3
+        else:
+            pass
         for radius in pointArray:
             currentAngle += 1
-            x = radius*math.sin(math.radians(currentAngle))*offset*scale
-            y = radius* math.cos(math.radians(currentAngle))*offset*scale
+            x = radius*math.sin(math.radians(currentAngle))*offset*self.scale
+            y = radius* math.cos(math.radians(currentAngle))*offset*self.scale
             if m==0:
                 self.t.penup()
                 m=1
@@ -220,6 +262,31 @@ class shapeMorphology():
         if self.args['inputfile'] in (None, ""):
             sys.exit("Inputfile is a required input value: --inputfile=../testdata/testdata.txt")
 
+    def addGraph(self):
+        ts = self.t.getscreen()
+        canvas=ts.getcanvas()
+        midX=int(self.screen_x/2)
+        midY=int(self.screen_y/2)
+        self.t.pen(fillcolor="white", pencolor="gray", pensize=0.25)
+        self.t.penup()
+        self.t.goto(-2*self.screen_x,0)
+        self.t.pendown()
+        self.t.goto(2*self.screen_x,0)
+        self.t.penup()
+        self.t.goto(0,-2*self.screen_y)
+        self.t.pendown()
+        self.t.goto(0,2*self.screen_y)
+        self.t.penup()
+        self.t.goto(-2*self.screen_x,-2*self.screen_y)
+        self.t.pendown()
+        self.t.goto(2*self.screen_x,-2*self.screen_y)
+        self.t.goto(2*self.screen_x,2*self.screen_y)
+        self.t.goto(-2*self.screen_x,2*self.screen_y)
+        self.t.goto(-2*self.screen_x,-2*self.screen_y)
+        self.t.penup()
+
+
+
     def saveFigure(self):
         ts = self.t.getscreen()
         ts.getcanvas().postscript(file=self.saveFileName)
@@ -235,6 +302,8 @@ if __name__ == "__main__":
                         help="<REQUIRED> Enter the name of the data file to process. Default datatype is from PAST.")
     parser.add_argument('--outputdirectory', default=None,
                         help="If you want the output to go someplace other than the /output directory, specify that here.")
+    parser.add_argument('--fixedCentroidX', default=0, help="Use this fixed point instead of a calculated centroid.")
+    parser.add_argument('--fixedCentroidY', default=0, help="Use this fixed point instead of a calculated centroid.")
     try:
         args = vars(parser.parse_args())
     except IOError, msg:
