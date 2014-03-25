@@ -11,6 +11,7 @@ import scipy as scipy
 import scipy.stats
 import numpy as np
 from scipy import stats
+import matplotlib.pyplot as plt
 
 
 class shapeMorphology():
@@ -28,14 +29,16 @@ class shapeMorphology():
         self.filename=""
         self.screen_x=300
         self.screen_y=300
-        self.screen=turtle.Screen()
+        #self.screen=turtle.Screen()
         self.angleRadiusArray=[]
         self.saveFileName=""
-        self.t =turtle.Turtle()
+        #self.t =turtle.Turtle()
         self.minArray=[]
         self.maxArray=[]
         self.scale=0
         self.lengthArray=[]
+        self.params = dict(projection='polar', theta_offset=np.pi/2)
+        self.fig,self.ax = plt.subplots(subplot_kw=self.params)
 
     def confidence_interval(self, data, alpha=0.10):
         a = 1.0 * np.array(data)
@@ -160,16 +163,69 @@ class shapeMorphology():
         dummy = input()
 
     def drawing(self):
-        self.screen.title(self.filename)
-        self.screen_x, self.screen_y=self.screen.screensize()
-        self.drawOutline(self.meanArray,"mean")
-        self.drawOutline(self.lowArray,"low")
-        self.drawOutline(self.highArray,"high")
-        self.drawOutline(self.minArray,"min")
-        self.drawOutline(self.maxArray,"max")
-        self.addGraph()
+        #self.screen.title(self.filename)
+        #self.ax.set_title(self.filename, va='bottom')
+        #self.screen_x, self.screen_y=self.screen.screensize()
+        ##self.drawOutlineWithTurtle(self.meanArray,"mean")
+        #self.drawOutlineWithTurtle(self.lowArray,"low")
+        #self.drawOutlineWithTurtle(self.highArray,"high")
+        #self.drawOutlineWithTurtle(self.minArray,"min")
+        #self.drawOutlineWithTurtle(self.maxArray,"max")
 
-    def drawOutline(self,pointArray,kind):
+        self.ax.set_title(self.filename)
+        self.drawOutlineWithMatplotlib(self.meanArray,"mean")
+        self.drawOutlineWithMatplotlib(self.lowArray,"low")
+        self.drawOutlineWithMatplotlib(self.highArray,"high")
+        self.drawOutlineWithMatplotlib(self.minArray,"min")
+        self.drawOutlineWithMatplotlib(self.maxArray,"max")
+        #self.addGraph()
+        plt.show()
+
+
+    def drawOutlineWithMatplotlib(self, pointArray, kind):
+
+        '''set colors
+        b: blue
+        g: green
+        r: red
+        c: cyan
+        m: magenta
+        y: yellow
+        k: black
+        w: white
+        '''
+
+        if kind == "mean":
+            color='c'
+            style='solid'
+        elif kind == "low":
+            color='r'
+            scaledArray =[]
+            for p in pointArray:
+                scaledArray.append(p*0.90)
+            pointArray = scaledArray
+            style='solid'
+        elif kind=="high":
+            color='b'
+            scaledArray =[]
+            for p in pointArray:
+                scaledArray.append(p*1.10)
+            pointArray = scaledArray
+            style='solid'
+        elif kind=="min" or kind=="max":
+            color='m'
+            style='dashed'
+        else:
+            pass
+        angles = np.arange(0, 360, 1.0)
+        theta = np.radians(angles)
+
+        self.ax.plot(theta, pointArray, color=color, linewidth=1,linestyle=style)
+        #self.ax.set_rmax(2.0)
+        self.ax.grid(True)
+
+
+    def drawOutlineWithTurtle(self,pointArray,kind):
 
         self.t.ht()
         ## go through points one by one based on distance
@@ -192,10 +248,10 @@ class shapeMorphology():
             self.t.pen(fillcolor="white", pencolor="blue", pensize=1)
             offset=3.25
         elif kind=="min":
-            self.t.pen(fillcolor="white", pencolor="gray", pensize=1)
+            self.t.pen(fillcolor="white", pencolor="gray", pensize=0.5)
             offset=3
         elif kind=="max":
-            self.t.pen(fillcolor="white", pencolor="gray", pensize=1)
+            self.t.pen(fillcolor="white", pencolor="gray", pensize=0.5)
             offset=3
         else:
             pass
