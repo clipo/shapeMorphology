@@ -285,8 +285,6 @@ class shapeMorphology():
         self.t.goto(-2*self.screen_x,-2*self.screen_y)
         self.t.penup()
 
-
-
     def saveFigure(self):
         ts = self.t.getscreen()
         ts.getcanvas().postscript(file=self.saveFileName)
