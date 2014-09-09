@@ -39,6 +39,8 @@ class shapeMorphology():
         self.lengthArray=[]
         self.params = dict(projection='polar', theta_offset=np.pi/2)
         self.fig,self.ax = plt.subplots(subplot_kw=self.params)
+        self.scaleFactor=75.0
+        self.ignoreColumns=1
 
     def confidence_interval(self, data, alpha=0.10):
         a = 1.0 * np.array(data)
@@ -77,7 +79,11 @@ class shapeMorphology():
                 tyValues=[]
                 yValues=[]
                 rowValues = map(str,row)
-                rowValues.pop(0)
+                ignoreNumber=0
+                for n in range(1,int(self.args['ignoreColumns'])):
+                    rowValues.pop(0)
+                    ignoreNumber+=1
+                #rowValues.pop(0)
                 txValues=rowValues[1::2]
                 tyValues=rowValues[2::2]
                 for m in txValues:
@@ -342,10 +348,12 @@ class shapeMorphology():
         self.t.penup()
 
     def saveFigure(self):
-        ts = self.t.getscreen()
-        ts.getcanvas().postscript(file=self.saveFileName)
-        command="ps2pdf "+ self.saveFileName+" "+ self.saveFileName[:-4]+".pdf"
-        process = subprocess.Popen(command, shell=True)
+        #ts = self.t.getscreen()
+        #ts.getcanvas().postscript(file=self.saveFileName)
+        #command="ps2pdf "+ self.saveFileName+" "+ self.saveFileName[:-4]+".pdf"
+        #process = subprocess.Popen(command, shell=True)
+        plt.savefig(self.saveFileName[:4]+".pdf")
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='shape analysis')
@@ -358,6 +366,8 @@ if __name__ == "__main__":
                         help="If you want the output to go someplace other than the /output directory, specify that here.")
     parser.add_argument('--fixedCentroidX', default=0, help="Use this fixed point instead of a calculated centroid.")
     parser.add_argument('--fixedCentroidY', default=0, help="Use this fixed point instead of a calculated centroid.")
+    parser.add_argument('--scaleFactor', default=75, help="Set the # of pixels that equals one centimeter.")
+    parser.add_argument('--ignoreColumns', default=5, help="How many of the columns are IDs?")
     try:
         args = vars(parser.parse_args())
     except IOError, msg:
