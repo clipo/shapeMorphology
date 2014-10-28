@@ -12,7 +12,11 @@ import scipy.stats
 import numpy as np
 from scipy import stats
 import matplotlib.pyplot as plt
+from matplotlib.backends.backend_pdf import PdfPages
 
+
+## for RN mataa
+## python ./shapeMorphology.py --inputfile="../testdata/rapanuimataa.txt" --fixedCentroidX=875 --fixedCentroidY=825
 
 class shapeMorphology():
 
@@ -55,6 +59,7 @@ class shapeMorphology():
 
     def calculateCentroid(self,xyArray):
         centroid = (sum(xyArray[0])/len(xyArray[0]),sum(xyArray[1])/len(xyArray[1]))
+        #print centroid
         return centroid
 
     def dist(self,x,y):
@@ -127,7 +132,7 @@ class shapeMorphology():
             #args['fixedCentroidY']=0
         #print "scale: ", self.scale
         file.close()
-        self.saveFileName=self.filename[0:-4]+"-out.eps"
+        self.saveFileName=self.filename[0:-4]
 
     def addOptions(self, oldargs):
         self.args = {'debug': None, 'alpha': None,
@@ -142,7 +147,7 @@ class shapeMorphology():
 
         for item in self.xyArray:
             if args['fixedCentroidX'] not in ("None", None, 0, "0", False, "False"):
-                centroid = [float(args['fixedCentroidX']),float(args['fixedCentroidY'])]
+                centroid = [float(args['fixedCentroidX'])/self.scalingFactor,float(args['fixedCentroidY'])/self.scalingFactor]
             else:
                 centroid = self.calculateCentroid(item)
             radius = self.radiiCalc(centroid,item)
@@ -165,7 +170,9 @@ class shapeMorphology():
             self.maxArray.append(max)
 
         self.drawing()
-        self.saveFigure()
+
+        #self.saveFigure()
+
         print('Hit any key to exit')
         dummy = input()
 
@@ -187,6 +194,8 @@ class shapeMorphology():
         self.drawOutlineWithMatplotlib(self.maxArray,"max")
         #self.addGraph()
         plt.show()
+        plt.savefig(self.saveFileName[:4]+".pdf", format='pdf')
+        plt.savefig("output.pdf")
 
 
     def drawOutlineWithMatplotlib(self, pointArray, kind):
@@ -353,7 +362,8 @@ class shapeMorphology():
         #ts.getcanvas().postscript(file=self.saveFileName)
         #command="ps2pdf "+ self.saveFileName+" "+ self.saveFileName[:-4]+".pdf"
         #process = subprocess.Popen(command, shell=True)
-        plt.savefig(self.saveFileName[:4]+".pdf")
+        plt.savefig(self.saveFileName[:4]+".pdf", format='pdf')
+        plt.savefig("output.pdf")
 
 
 if __name__ == "__main__":
@@ -396,6 +406,6 @@ args={'inputfile':'../testdata/biface.txt','debug':1 }
 shapeMorphology.conductAnalysis(args)
 
 
-
+python ./shapeMorphology.py --inputfile="../testdata/rapanuimataa.txt" --fixedCentroidX=875 --fixedCentroidY=825
 
 '''''
