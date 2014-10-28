@@ -41,6 +41,7 @@ class shapeMorphology():
         self.fig,self.ax = plt.subplots(subplot_kw=self.params)
         self.scaleFactor=75.0
         self.ignoreColumns=1
+        self.scalingFactor=75
 
     def confidence_interval(self, data, alpha=0.10):
         a = 1.0 * np.array(data)
@@ -87,11 +88,11 @@ class shapeMorphology():
                 txValues=rowValues[1::2]
                 tyValues=rowValues[2::2]
                 for m in txValues:
-                    xValues.append(float(m))
+                    xValues.append(float(m)/self.scalingFactor)
                 for n in tyValues:
                     if n not in ("",None):
                         #print "valu: ", n
-                        yValues.append(float(n))
+                        yValues.append(float(n)/self.scalingFactor)
                 xyPoints.append(xValues)
                 xyPoints.append(yValues)
                 self.xyArray.append(xyPoints)
